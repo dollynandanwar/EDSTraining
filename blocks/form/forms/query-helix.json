@@ -1,0 +1,32 @@
+{
+  "data": [
+    {
+      "label": "Full Name",
+      "field": "fullname",
+      "placeholder": "Enter your full name",
+      "type": "text"
+    },
+    {
+      "label": "Email",
+      "field": "email",
+      "placeholder": "Enter your email",
+      "type": "email"
+    },
+    {
+      "label": "Phone",
+      "field": "phone",
+      "placeholder": "Enter your phone",
+      "type": "tel"
+    },
+    {
+      "label": "Favorite Quote",
+      "field": "quote",
+      "placeholder": "Enter your quote",
+      "type": "textarea"
+    },
+    {
+      "label": "Submit",
+      "type": "submit"
+    }
+  ]
+}
