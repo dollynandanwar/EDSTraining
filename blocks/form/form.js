@@ -120,7 +120,7 @@ function createFieldWrapper(fd, tagName = 'div') {
   if (fd.Fieldset) {
     fieldWrapper.dataset.fieldset = fd.Fieldset;
   }
-  if (fd.Mandatory.toLowerCase() === 'true') {
+  if (fd.Mandatory && fd.Mandatory.toLowerCase && fd.Mandatory.toLowerCase() === 'true') {
     fieldWrapper.dataset.required = '';
   }
   fieldWrapper.classList.add('field-wrapper');
@@ -139,22 +139,11 @@ function createButton(fd) {
   button.dataset.redirect = fd.Extra || '';
   button.id = fd.Id;
   button.name = fd.Name;
-  button.addEventListener("click", nextFunc);
+  button.addEventListener('click', nextFunc);
   wrapper.replaceChildren(button);
   return wrapper;
 }
 
-// let currentFieldsetIndex = 0;
-// function nextFunc(){
-//   console.log("clicked");
-//   const fieldsets = document.querySelectorAll('fieldset');
-//   fieldsets[currentFieldsetIndex].classList.remove('active');
-//   currentFieldsetIndex++;
-//   if(currentFieldsetIndex >= fieldsets.length){
-//     currentFieldsetIndex=0;
-//   }
-//   fieldsets[currentFieldsetIndex].classList.add('active');
-// }
 let currentFieldsetIndex = 0;
 
 function nextFunc() {
@@ -166,7 +155,6 @@ function nextFunc() {
     currentFieldsetIndex = 0;
   }
   fieldsets[currentFieldsetIndex].classList.add('active');
-  // Check if the current fieldset is the last one and show the separate div if it is
   if (isLastFieldset(fieldsets[currentFieldsetIndex])) {
     document.getElementById('submit').style.display = 'block';
   } else {
@@ -180,8 +168,7 @@ function isLastFieldset(fieldset) {
 }
 
 function createSubmit(fd) {
-  const wrapper = createButton(fd);
-  return wrapper;
+  return createButton(fd);
 }
 
 function createInput(fd) {
@@ -213,12 +200,27 @@ const createSelect = withFieldWrapper((fd) => {
     ph.setAttribute('disabled', '');
     select.append(ph);
   }
-  fd.Options.split(',').forEach((o) => {
-    const option = document.createElement('option');
-    option.textContent = o.trim();
-    option.value = o.trim();
-    select.append(option);
-  });
+  if (Array.isArray(fd.Options)) {
+    fd.Options.forEach((optionData) => {
+      const option = document.createElement('option');
+      if (typeof optionData === 'object') {
+        option.textContent = optionData.Text || optionData.Label || optionData.Value || '';
+        option.value = optionData.Value || optionData.Text || optionData.Label || '';
+      } else {
+        option.textContent = optionData;
+        option.value = optionData;
+      }
+      select.append(option);
+    });
+  } else if (fd.Options && typeof fd.Options === 'string') {
+    fd.Options.split(',').forEach((o) => {
+      const option = document.createElement('option');
+      const value = o.trim();
+      option.textContent = value;
+      option.value = value;
+      select.append(option);
+    });
+  }
   return select;
 });
 
@@ -241,7 +243,7 @@ function createHidden(fd) {
   input.type = 'hidden';
   input.id = fd.Id;
   input.name = fd.Name;
-  input.value = fd.Value;
+  input.value = fd.Value || '';
   return input;
 }
 
@@ -332,7 +334,6 @@ async function fetchData(url) {
 }
 
 async function fetchForm(pathname) {
-  // get the main form
   const jsonData = await fetchData(pathname);
   return jsonData;
 }
@@ -341,46 +342,63 @@ async function createForm(formURL) {
   const { pathname } = new URL(formURL);
   const data = await fetchForm(pathname);
   const form = document.createElement('form');
+
   data.forEach((fd) => {
     const el = renderField(fd);
     const input = el.querySelector('input,textarea,select');
-    if (fd.Mandatory && fd.Mandatory.toLowerCase() === 'true') {
+
+    if (fd.Mandatory && fd.Mandatory.toLowerCase && fd.Mandatory.toLowerCase() === 'true' && input) {
       input.setAttribute('required', 'required');
     }
+
     if (input) {
-      input.id = fd.Id;
-      input.name = fd.Name;
-     // input.value = fd.Value;
-      input.Placeholder = fd.Placeholder;
+      input.id = fd.Id || '';
+      input.name = fd.Name || '';
+      input.value = fd.Value || '';
+      input.placeholder = fd.Placeholder || '';
       if (fd.Description) {
         input.setAttribute('aria-describedby', `${fd.Id}-description`);
       }
     }
+
     form.append(el);
   });
+
   groupFieldsByFieldSet(form);
-  // eslint-disable-next-line prefer-destructuring
   form.dataset.action = pathname.split('.json')[0];
   form.addEventListener('submit', (e) => {
     e.preventDefault();
-    e.submitter.setAttribute('disabled', '');
+    if (e.submitter) {
+      e.submitter.setAttribute('disabled', '');
+    }
     handleSubmit(form);
   });
   decorateFormFields(form);
   addActiveClassToFirstFieldset(form);
   return form;
 }
-//new function for adding active class to the first fieldset
+
 function addActiveClassToFirstFieldset(form) {
   const firstfieldset = form.querySelector('fieldset');
   if (firstfieldset) {
     firstfieldset.classList.add('active');
   }
 }
+
 export default async function decorate(block) {
-  const formLink = block.querySelector('a[href$=".json"]');
-  if (formLink) {
-    const form = await createForm(formLink.href);
+  try {
+    const formLink = block.querySelector('a[href$=".json"]');
+    const formUrl = formLink ? formLink.href : null;
+    console.log('Form Link URL:', formUrl);
+
+    if (!formUrl) {
+      return;
+    }
+
+    const form = await createForm(formUrl);
     formLink.replaceWith(form);
+    console.log('Form creation success');
+  } catch (err) {
+    console.error('FORM ERROR:', err);
   }
 }
